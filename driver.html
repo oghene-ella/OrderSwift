@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <title>Driver</title>
+</head>
+<body style="margin: 10px;">
+    <h1 style="text-align: center;">Driver App</h1>
+    <label style="margin-top: 20px;"><b>Notifications:</b></label>
+    <div style="border: 1px solid lightgray; min-height: 90vh;" id="notification-container">
+
+    </div>
+</body>
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  const socket = io('http://localhost:3000', {
+    query: {
+        user_type: 'driver',
+        name: 'Driver Dan',
+        id: localStorage.getItem('driverId')
+    }
+  });
+
+    socket.on('connect', () => {
+        console.log('connected');
+    });
+
+    socket.on('driverCreated', (data) => {
+        console.log(data);
+        localStorage.setItem('driverId', data.driver.id);
+    })
+
+    socket.on('orderRequested', (data) => {
+        console.log(data);
+        const notificationContainer = document.getElementById('notification-container');
+
+        const div = document.createElement('div');
+
+        div.innerHTML = `<div style="margin: 10px;" class="card">
+            <h5 class="card-header">Order Request </h5>
+            <div class="card-body">
+                <h5 class="card-title">${data.order.sender.name} is requesting a ride</h5>
+                <p class="card-text">Current Location: ${data.order.current_location}</p>
+                <p class="card-text">Destination: ${data.order.destination}</p>
+                <p class="card-text">Price: N${data.order.price}</p>
+                <button id="${data.order.id}-accept-order" href="#" class="btn btn-primary">Accept</button>
+                <button id="${data.order.id}-reject-order" href="#" class="btn btn-danger">Reject</button>
+            </div>
+            </div>`
+        
+        notificationContainer.appendChild(div)
+        
+        const acceptOrderButton = document.getElementById(`${data.order.id}-accept-order`);
+        const rejectOrderButton = document.getElementById(`${data.order.id}-reject-order`);
+
+        acceptOrderButton.addEventListener('click', () => {
+            socket.emit('acceptOrder', { id: data.order.id, driver_id: localStorage.getItem('driverId') });
+        })
+
+        rejectOrderButton.addEventListener('click', () => {
+            socket.emit('rejectOrder', { id: data.order.id, driver_id: localStorage.getItem('driverId') });
+        })
+    })
+
+    socket.on('orderAccepted', (data) => {
+        console.log(data);
+    
+        const acceptOrderButton = document.getElementById(`${data.order.id}-accept-order`);
+        const rejectOrderButton = document.getElementById(`${data.order.id}-reject-order`);
+
+        if (acceptOrderButton) {
+            acceptOrderButton.disabled = true;
+            acceptOrderButton.innerHTML = 'Accepted';
+        }
+
+        if (rejectOrderButton) {
+            rejectOrderButton.disabled = true;
+        }
+    })
+
+    socket.on('orderRejected', (data) => {
+        console.log(data);
+        
+        const acceptOrderButton = document.getElementById(`${data.order.id}-accept-order`);
+        const rejectOrderButton = document.getElementById(`${data.order.id}-reject-order`);
+
+        if (acceptOrderButton) {
+            acceptOrderButton.disabled = true;
+        }
+
+        if (rejectOrderButton) {
+            rejectOrderButton.disabled = true;
+            rejectOrderButton.innerHTML = 'Rejected';
+        }
+    })
+</script>
+</html>
