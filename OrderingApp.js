@@ -1,6 +1,6 @@
-const Driver = require('./Driver');
-const Order = require('./Order');
-const Sender = require('./Sender');
+const Driver = require('./classes/Driver');
+const Order = require('./classes/Order');
+const Sender = require('./classes/Sender');
 
 class OrderingApp {
     constructor() {
