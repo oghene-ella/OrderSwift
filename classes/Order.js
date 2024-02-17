@@ -8,11 +8,6 @@ class Order {
         this.sender = sender;
         this.driver = null;
     }
-
-    assignDriver(driver) {
-        console.log(`Order ${this.id} is assigned to ${driver.name}`);
-        this.driver = driver;
-    }
 }
 
 module.exports = Order;
