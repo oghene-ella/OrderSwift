@@ -10,25 +10,30 @@ class OrderingApp {
         this.socketUserMap = new Map();
     }
 
-    joinSession(socket) {
-        const { name, id, user_type } = socket.handshake.query;
-        if (user_type === 'driver') {
-            const driver = this.drivers.find(driver => driver.id === id);
-            if (driver) {
+    joinSession({user_type, name, socket}){
+        console.log("UserInfo about to be processed")
+        this.createUser({socket,name,user_type})
+    }
+
+    createUser({socket,name, user_type}){
+        switch(user_type) {
+            case 'driver':
+                const driver = new Driver(name);
+                this.drivers.push(driver);
                 this.assignSocket({socket, user: driver});
-                return;
-            } else {
-                this.createUser({ name, socket, user_type});
-            }
-        } else if (user_type === 'sender') {
-            const sender = this.senders.find(sender => sender.id === id);
-            if (sender) {
+                this.sendEvent({socket, data: { driver }, eventname: 'driverCreated'})
+                console.log('Driver created',this.drivers);
+                return driver;
+            case 'sender':
+                const sender = new Sender(name);
+                this.senders.push(sender);
                 this.assignSocket({socket, user: sender});
-                return;
-            } else {
-                this.createUser({ name, socket, user_type});
-            }
-        }
+                this.sendEvent({socket, data: { sender },eventname: 'senderCreated'})
+                console.log('Sender created', this.senders);
+                return sender;
+            default:
+                throw new Error('Invalid user type');
+        } 
     }
 
     assignSocket({socket, user}) {
@@ -40,77 +45,94 @@ class OrderingApp {
         socket.emit(eventname, data);
     }
 
-    createUser({ name, socket, user_type}) {
-        switch(user_type) {
-            case 'driver':
-                const driver = new Driver(name);
-                this.drivers.push(driver);
-                this.assignSocket({socket, user: driver, user_type});
-                this.sendEvent({socket, data: { driver }, eventname: 'driverCreated'})
-                console.log('Driver created');
-                return driver;
-            case 'sender':
-                const sender = new Sender(name);
-                this.senders.push(sender);
-                this.assignSocket({socket, user: sender, user_type});
-                this.sendEvent({socket, data: { sender }, eventname: 'senderCreated'})
-                console.log('Sender created', this.senders);
-                return sender;
-            default:
-                throw new Error('Invalid user type');
+
+    requestOrder({ current_location, destination, price, senderId }) {
+        const sender = this.senders.find(sender=>sender.id == senderId)
+        const order = new Order({current_location,destination, price, sender})
+
+        const timer = setTimeout(()=>{
+                // codes to execute after 1min
+            for(const order of this.orders){
+                if(order.status== "pending"){
+                    order.status = "expired"
+
+                 const senderSocket = this.socketUserMap.get(sender.id)
+                 console.log("sending expired order to the sender")
+                 senderSocket.emit("orderExpired", {order})
+                 
+                }
+            }
+
+        }, 60000)
+
+
+        const updatedOrder = {...order, timer:timer}
+
+        this.orders.push(updatedOrder)
+
+        for(const driver of this.drivers){
+            if(driver.in_ride)continue
+            const driverSocket = this.socketUserMap.get(driver.id)
+            driverSocket.emit("orderRequested", order)
+        }
+
+        return updatedOrder
+    }
+
+    acceptOrder(id , driverId){
+        const order = this.orders.find(order=>order.id == id)
+        const sender = this.senders.find(sender =>sender.id == order.sender.id)
+        const driver = this.drivers.find(driver=>driver.id == driverId)
+
+        order.in_ride = true
+        order.status = "accepted"
+        order.driver = driver
+        clearTimeout(order.timer)
+
+        const senderSocket = this.socketUserMap.get(sender.id)
+        senderSocket.emit("orderAccepted", {order})
+
+        for(const driver of this.drivers){
+            if(driver.id == driverId){
+                const driverSocket = this.socketUserMap.get(driver.id)
+
+                driverSocket.emit("orderAccepted", {order})
+            }else{
+                const otherSocket = this.socketUserMap.get(driver.id) 
+                otherSocket.emit("orderMissed", {order})
+            }
         }
     }
 
+    rejectOrder(id , driverId){
+        const order = this.orders.find(order=>order.id == id)
+        const sender = this.senders.find(sender =>sender.id == order.sender.id)
+        const driver = this.drivers.find(driver=>driver.id == driverId)
 
-    requestOrder({ current_location, destination, price, id }) {
-        console.log('Requesting order');
-        const sender = this.senders.find(sender => sender.id === id);
-        const order = new Order({ current_location, destination, price, sender });
-        this.orders.push(order);
+        order.status = "rejected";
+        clearTimeout(order.timer)
 
-        // notify drivers
-        for (const driver of this.drivers) {
-            if (driver.in_ride) continue;
-            this.sendEvent({socket: this.socketUserMap.get(driver.id), data: { order }, eventname: 'orderRequested'});
-        }
+        const senderSocket = this.socketUserMap.get(sender.id)
+        senderSocket.emit("orderRejected", {order})
 
-        console.log('Order requested', order)
-        return order;
+        const driverSocket = this.socketUserMap.get(driver.id)
+        console.log(driverSocket)
+        driverSocket.emit("orderRejected", {order})
     }
 
-    acceptOrder(order) {
-        const { id, driver_id } = order;
-        // get all info about order
-        const driver = this.drivers.find(driver => driver.id === driver_id);
-        const _order = this.orders.find(order => order.id === id);
-        const sender = this.senders.find(sender => sender.id === _order.sender.id);
+    finishRide(id , driverId){
+        const order = this.orders.find(order=>order.id == id)
+        const sender = this.senders.find(sender =>sender.id == order.sender.id)
+        const driver = this.drivers.find(driver=>driver.id == driverId)
 
-        console.log('Accepting order', {_order, driver, sender});
+        driver.in_ride = false
 
-        _order.assignDriver(driver);
+        const senderSocket = this.socketUserMap.get(sender.id)
+        senderSocket.emit("rideFinished", {order})
 
-        const userSocket = this.socketUserMap.get(sender.id);
-        userSocket.emit('orderAccepted', { order: _order });
-
-        const driverSocket = this.socketUserMap.get(driver.id);
-        driverSocket.emit('orderAccepted', { order: _order });
+        const driverSocket = this.socketUserMap.get(driver.id)
+        driverSocket.emit("rideFinished", {order})
     }
-
-    rejectOrder(order) {
-
-        const { id, driver_id } = order;
-        const driver = this.drivers.find(driver => driver.id === driver_id);
-        const _order = this.orders.find(order => order.id === id);
-        const sender = this.senders.find(sender => sender.id === _order.sender.id);
-
-        console.log('Rejecting order', {_order, driver, sender});
-
-
-        const driverSocket = this.socketUserMap.get(driver.id);
-        driverSocket.emit('orderRejected', { order: _order });
-    }
-
-
 }
 
 module.exports = OrderingApp;
