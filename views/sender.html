@@ -14,6 +14,13 @@
         <h1 class="text-center text-3xl py-5">Sender Dashboard</h1>
     </span>
 
+    <form id="signUpForm" action="" class="w-full flex justify-between items-center gap-8" >
+        <label for="name"><b>Username:</b></label>
+        <input id="name" type="text" name="name" placeholder="Enter your name..." class="w-full border border-gray-400 rounded-md px-2 py-2">
+
+        <button id="submitBtn" type="submit" class="bg-green-600 rounded-md px-4 py-2 text-white">Enroll</button>
+    </form>
+
     <form id="request-form" action="" class="flex flex-col gap-6">
         <div class="flex gap-6 items-center">
             <span class="text-xl" id="inputGroup-sizing-default">Location</span>
@@ -37,43 +44,44 @@
 </body>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-  const socket = io('http://localhost:3000', {
-    query: {
-        user_type: 'sender',
-        name: 'Ellahhh',
-        id: localStorage.getItem('senderId')
-    }
-  });
+  const socket = io("http://localhost:3000")
 
-    socket.on('connect', () => {
-        console.log('connected');
-    });
+    const signUpForm = document.getElementById("signUpForm")
+    const Username = document.getElementById("name")
+    const notificationContainer = document.getElementById("notification-container")
 
     const requestForm = document.getElementById('request-form');
 
+    signUpForm.addEventListener("submit", (e)=>{
+        e.preventDefault()
+        localStorage.setItem(`driver-${socket.id}`, socket)
+        socket.emit("join", "sender", `Sender ${Username.value}`)
+    })
+
+    socket.on("senderCreated", (data)=>{
+        localStorage.setItem(`sender-${socket.id}`, data.sender.id)
+        console.log("SenderId saved")
+    })
+
     requestForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const location = e.target[0].value;
+        const current_location = e.target[0].value;
         const destination = e.target[1].value;
-        const price = e.target[2].value;
-        socket.emit('requestOrder', { current_location: location, destination, price, id: localStorage.getItem('senderId') });
+        const price = e.target[2].value
+        const senderId = localStorage.getItem(`sender-${socket.id}`)
+        const driverId = localStorage.getItem(`driver-${socket.id}`)
+        socket.emit("requestOrder", {current_location,destination, price, senderId, driverId})
     });
-
-    socket.on('senderCreated', (data) => {
-        console.log(data);
-        localStorage.setItem('senderId', data.sender.id);
-    })
 
     socket.on('orderAccepted', (data) => {
         console.log(data);
-    
-        const notificationContainer = document.getElementById('notification-container');
 
         const div = document.createElement('div');
 
         div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl">${data.order.driver.name} is requesting a ride</h5>
+                <h5 class="text-xl"> Your Order has been accepted </h5>
+                <p class="text-lg capitalize">Status: ${data.order.status}</p>
                 <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
                 <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
                 <p class="text-lg">Price: N${data.order.price}</p>
@@ -83,19 +91,36 @@
         notificationContainer.appendChild(div)
     })
 
-    socket.on('orderRejected', (data) => {
+    socket.on('rideFinished', (data) => {
         console.log(data);
-    
-        const notificationContainer = document.getElementById('notification-container');
 
         const div = document.createElement('div');
 
         div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl">${data.order.driver.name} is requesting a ride</h5>
-                <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
-                <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
-                <p class="text-lg">Price: N${data.order.price}</p>
+                <h5 class="text-xl"> Your ride with ${data.driver.name} has finished </h5>
+                <p class="text-lg capitalize">Current Location: ${data.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.destination}</p>
+                <p class="text-lg">Price: N${data.price}</p>
+            </div>
+            </div>`
+        
+        notificationContainer.appendChild(div)
+    })
+
+    socket.on('orderExpired', (data) => {
+        console.log(data);
+
+        const div = document.createElement('div');
+        div.id = `${data.order.id}-expired-order`
+
+        div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
+            <div class="flex flex-col gap-4">
+                <h5 class="text-xl">${data.driver.name} No Driver was found for your order request.</h5>
+                <h5 class="text-lg capitalize">Status: ${data.order.status}</h5>
+                <p class="text-lg capitalize">Current Location: ${data.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.destination}</p>
+                <p class="text-lg">Price: N${data.price}</p>
             </div>
             </div>`
         
