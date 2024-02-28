@@ -16,16 +16,11 @@ const orderingApp = new OrderingApp();
 const { Server } = require('socket.io');
 const server = http.createServer(app);
 
-const io = new Server(server, {
-    cors: {
-        origin: '*',
-        methods: ['GET', 'POST']
-    }
-});
+const io = new Server(server);
 
 // socket connection for all the requests
 io.on('connection', (socket) => {
-    console.log('a user connected');
+    console.log('a user connected', socket.id);
 
     socket.on("join", (user_type, Username )=>{
         const userInfo = {
@@ -42,15 +37,18 @@ io.on('connection', (socket) => {
         orderingApp.requestOrder(order);
     });
 
-    socket.on('acceptOrder', (order) => {
-        orderingApp.acceptOrder(order);
+    socket.on('rejectOrder', (id, driverId) => {
+        console.log('Reject order', (id, driverId));
+        orderingApp.rejectOrder(id, driverId);
     });
-
-    socket.on('rejectOrder', (order) => {
-        orderingApp.rejectOrder(order);
+    
+    socket.on('acceptOrder', (id, driverId) => {
+        console.log('Accept order', id, driverId);
+        orderingApp.acceptOrder(id, driverId);
     });
 
     socket.on("finishRide", (id, driverId)=>{
+        console.log('Finished order', order);
         orderingApp.finishRide(id, driverId)
     })
 });

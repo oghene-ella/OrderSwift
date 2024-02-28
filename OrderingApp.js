@@ -45,9 +45,9 @@ class OrderingApp {
         socket.emit(eventname, data);
     }
 
-
     requestOrder({ current_location, destination, price, senderId }) {
         const sender = this.senders.find(sender=>sender.id == senderId)
+        console.log("request order sender", sender.id);
         const order = new Order({current_location,destination, price, sender})
 
         const timer = setTimeout(()=>{
@@ -59,7 +59,6 @@ class OrderingApp {
                  const senderSocket = this.socketUserMap.get(sender.id)
                  console.log("sending expired order to the sender")
                  senderSocket.emit("orderExpired", {order})
-                 
                 }
             }
 
@@ -71,7 +70,9 @@ class OrderingApp {
         this.orders.push(updatedOrder)
 
         for(const driver of this.drivers){
-            if(driver.in_ride)continue
+            if(driver.in_ride){
+                continue
+            }
             const driverSocket = this.socketUserMap.get(driver.id)
             driverSocket.emit("orderRequested", order)
         }
@@ -80,9 +81,12 @@ class OrderingApp {
     }
 
     acceptOrder(id , driverId){
-        const order = this.orders.find(order=>order.id == id)
+        const order = this.orders.find(order=>order.id == id);
+        console.log("accept order order", order, this.orders)
         const sender = this.senders.find(sender =>sender.id == order.sender.id)
+        console.log("accept order sender", sender)
         const driver = this.drivers.find(driver=>driver.id == driverId)
+        console.log("accept order driver", driver)
 
         order.in_ride = true
         order.status = "accepted"
@@ -109,6 +113,8 @@ class OrderingApp {
         const sender = this.senders.find(sender =>sender.id == order.sender.id)
         const driver = this.drivers.find(driver=>driver.id == driverId)
 
+        console.log("reject driver", driver)
+        console.log("reject driver this", this.drivers)
         order.status = "rejected";
         clearTimeout(order.timer)
 
@@ -116,9 +122,11 @@ class OrderingApp {
         senderSocket.emit("orderRejected", {order})
 
         const driverSocket = this.socketUserMap.get(driver.id)
-        console.log(driverSocket)
+        console.log("reject order driver", driver)
+        console.log("reject order driver socket", driverSocket)
         driverSocket.emit("orderRejected", {order})
     }
+    
 
     finishRide(id , driverId){
         const order = this.orders.find(order=>order.id == id)
