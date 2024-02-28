@@ -42,8 +42,8 @@
     })
 
     socket.on('driverCreated', (data) => {
-        console.log(data);
-        localStorage.setItem('driverId', data.driver.id);
+        console.log("driver created and saved". data);
+        localStorage.setItem(`driver-${socket.id}`, data.driver.id)
     })
 
     socket.on('orderRequested', (data) => {
@@ -92,7 +92,7 @@
     })
 
     socket.on('orderAccepted', (data) => {
-        console.log(data);
+        console.log(data.order);
 
         const cardContainer = document.getElementById(`${data.id}-cardContainer`)
         const div1 = document.createElement("div")
@@ -100,22 +100,22 @@
         div1.innerHTML = `
         <div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl">${data.sender.name} has Accepted the ride</h5>
-                <p class="text-lg capitalize">Current Location: ${data.current_location}</p>
-                <p class="text-lg capitalize">Destination: ${data.destination}</p>
-                <p class="text-lg">Price: $${data.price}</p>
-                <button id="${data.id}-accept-order" href="#" class="bg-green-500 text-white rounded-md px-5 py-2">Accept</button>
-                <button id="${data.id}-reject-order" href="#" class="bg-red-600 text-white rounded-md px-5 py-2">Reject</button>
+                <h5 class="text-xl">${data.order.sender.name} has Accepted the ride </h5>
+                <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
+                <p class="text-lg">Price: $${data.order.price}</p>
+                <button id="${data.order.id}-accept-order" href="#" class="bg-green-500 text-white rounded-md px-5 py-2">Accept</button>
+                <button id="${data.order.id}-reject-order" href="#" class="bg-red-600 text-white rounded-md px-5 py-2">Reject</button>
             </div>
             </div>`
 
-        notificationContainer.replaceChild(div2, cardContainer)
+        notificationContainer.replaceChild(div1, cardContainer)
 
-        const finishRideBtn = document.getElementById(`${data.id}-finish-ride`)
+        const finishRideBtn = document.getElementById(`${data.order.id}-finish-ride`)
 
         finishRideBtn.addEventListener("click", ()=>{
             const driverId = localStorage.getItem(`driver-${socket.id}`)
-            const id = data.id
+            const id = data.order.id
 
             socket.emit("finishRide", id, driverId)
         })
@@ -125,6 +125,7 @@
         console.log(data);
         console.log(data.order.sender.name)
         const cardContainer = document.getElementById(`${data.order.id}-cardContainer`);
+        const notificationContainer = document.getElementById('notification-container');
 
         const div2 = document.createElement('div');
         console.log(cardContainer)
@@ -132,7 +133,7 @@
         div2.innerHTML = `
         <div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl">${data.order.sender.name} Order has been accepted</h5>
+                <h5 class="text-xl">${data.order.sender.name} Order has been accepted by Another Driver</h5>
                 <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
                 <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
                 <p class="text-lg">Price: $${data.order.price}</p>
@@ -155,18 +156,25 @@
 
     socket.on('orderRejected', (data) => {
         console.log(data);
+        console.log(data.order.sender.name)
+        const cardContainer = document.getElementById(`${data.order.id}-cardContainer`);
+        const notificationContainer = document.getElementById('notification-container');
+
+        const div2 = document.createElement('div');
+        console.log(cardContainer)
         
-        const acceptOrderButton = document.getElementById(`${data.order.id}-accept-order`);
-        const rejectOrderButton = document.getElementById(`${data.order.id}-reject-order`);
-
-        if (acceptOrderButton) {
-            acceptOrderButton.disabled = true;
-        }
-
-        if (rejectOrderButton) {
-            rejectOrderButton.disabled = true;
-            rejectOrderButton.innerHTML = 'Rejected';
-        }
+        div2.innerHTML = `
+        <div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
+            <div class="flex flex-col gap-4">
+                <h5 class="text-xl">${data.order.sender.name} Order has been rejected</h5>
+                <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
+                <p class="text-lg">Price: $${data.order.price}</p>
+                <button id="${data.order.id}-accept-order" href="#" class="btn btn-primary" disabled>Rejected</button>
+            </div>
+            </div>`
+        
+        notificationContainer.replaceChild(div2 , cardContainer)
     })
 </script>
 </html>

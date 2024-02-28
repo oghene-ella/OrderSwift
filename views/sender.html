@@ -54,7 +54,7 @@
 
     signUpForm.addEventListener("submit", (e)=>{
         e.preventDefault()
-        localStorage.setItem(`driver-${socket.id}`, socket)
+
         socket.emit("join", "sender", `Sender ${Username.value}`)
     })
 
@@ -69,8 +69,7 @@
         const destination = e.target[1].value;
         const price = e.target[2].value
         const senderId = localStorage.getItem(`sender-${socket.id}`)
-        const driverId = localStorage.getItem(`driver-${socket.id}`)
-        socket.emit("requestOrder", {current_location,destination, price, senderId, driverId})
+        socket.emit("requestOrder", {current_location,destination, price, senderId})
     });
 
     socket.on('orderAccepted', (data) => {
@@ -80,11 +79,11 @@
 
         div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl"> Your Order has been accepted </h5>
+                <h5 class="text-xl"> Your Order has been accepted</h5>
                 <p class="text-lg capitalize">Status: ${data.order.status}</p>
                 <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
                 <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
-                <p class="text-lg">Price: N${data.order.price}</p>
+                <p class="text-lg">Price: $${data.order.price}</p>
             </div>
             </div>`
         
@@ -98,10 +97,10 @@
 
         div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl"> Your ride with ${data.driver.name} has finished </h5>
-                <p class="text-lg capitalize">Current Location: ${data.current_location}</p>
-                <p class="text-lg capitalize">Destination: ${data.destination}</p>
-                <p class="text-lg">Price: N${data.price}</p>
+                <h5 class="text-xl"> Your ride with ${data.order.driver.name} has finished </h5>
+                <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
+                <p class="text-lg">Price: $${data.order.price}</p>
             </div>
             </div>`
         
@@ -110,22 +109,40 @@
 
     socket.on('orderExpired', (data) => {
         console.log(data);
+        const notificationContainer = document.getElementById('notification-container');
 
         const div = document.createElement('div');
         div.id = `${data.order.id}-expired-order`
 
         div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
             <div class="flex flex-col gap-4">
-                <h5 class="text-xl">${data.driver.name} No Driver was found for your order request.</h5>
+                <h5 class="text-xl">No Driver was found for your order request.</h5>
                 <h5 class="text-lg capitalize">Status: ${data.order.status}</h5>
-                <p class="text-lg capitalize">Current Location: ${data.current_location}</p>
-                <p class="text-lg capitalize">Destination: ${data.destination}</p>
-                <p class="text-lg">Price: N${data.price}</p>
+                <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
+                <p class="text-lg">Price: $${data.order.price}</p>
             </div>
             </div>`
         
         notificationContainer.appendChild(div)
     })
 
+    socket.on('orderRejected', (data) => {
+        console.log(data);
+
+        const div = document.createElement('div');
+
+        div.innerHTML = `<div class="border border-gray-100 bg-white w-full mx-auto h-fit drop-shadow-md p-5">
+            <div class="flex flex-col gap-4">
+                <h5 class="text-xl"> Your Order has been rejected </h5>
+                <p class="text-lg capitalize">Status: ${data.order.status}</p>
+                <p class="text-lg capitalize">Current Location: ${data.order.current_location}</p>
+                <p class="text-lg capitalize">Destination: ${data.order.destination}</p>
+                <p class="text-lg">Price: $${data.order.price}</p>
+            </div>
+            </div>`
+        
+        notificationContainer.appendChild(div)
+    })
 </script>
 </html>
