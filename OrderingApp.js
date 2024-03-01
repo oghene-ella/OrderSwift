@@ -8,6 +8,7 @@ class OrderingApp {
         this.drivers = [];
         this.senders = [];
         this.socketUserMap = new Map();
+        this.orderHistory = [];
     }
 
     joinSession({user_type, name, socket}){
@@ -140,6 +141,14 @@ class OrderingApp {
 
         const driverSocket = this.socketUserMap.get(driver.id)
         driverSocket.emit("rideFinished", {order})
+    }
+
+    addToHistory(orderOrEvent) {
+        this.orderHistory.push(orderOrEvent);
+    }
+
+    getHistory() {
+        return this.orderHistory;
     }
 }
 

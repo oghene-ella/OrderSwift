@@ -29,11 +29,12 @@
 </body>
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
-    const socket = io("http://localhost:3000")
+    // const socket = io("http://localhost:3000")
 
+    const socket = io("https://orderswift.onrender.com")
     const signUpForm = document.getElementById("signUpForm")
     const Username = document.getElementById("name")
-    const notificationContainer = document.getElementById("notification-container")
+    const notificationContainer = document.getElementById("notification-container");
 
     signUpForm.addEventListener("submit", (e)=>{
         e.preventDefault()
@@ -45,7 +46,7 @@
         console.log("driver created and saved". data);
         localStorage.setItem(`driver-${socket.id}`, data.driver.id)
     })
-
+    
     socket.on('orderRequested', (data) => {
         console.log(data);
 
@@ -176,5 +177,23 @@
         
         notificationContainer.replaceChild(div2 , cardContainer)
     })
+
+    socket.on('orderHistory', history => {
+        renderOrderHistory(history);
+    });
+
+    function renderOrderHistory(history) {
+            const historyContainer = document.getElementById('notification-container');
+            if (!historyContainer) {
+                return;
+            }
+
+            history.forEach(item => {
+                const listItem = document.createElement('li');
+                listItem.textContent = item.details;
+                historyContainer.appendChild(listItem);
+            });
+        }
+
 </script>
 </html>
